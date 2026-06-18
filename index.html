@@ -5,27 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Les Complices — Réservation du bateau</title>
 <style>
-  :root {
-    --blue: #1a6fb5;
-    --blue-light: #e8f2fb;
-    --blue-dark: #0d4a82;
-    --green: #1a8a4a;
-    --green-light: #e6f5ec;
-    --amber: #b56a00;
-    --amber-light: #fff3e0;
-    --red: #c0392b;
-    --red-light: #fdecea;
-    --gray-50: #f8f9fa;
-    --gray-100: #f0f1f3;
-    --gray-200: #e2e4e8;
-    --gray-400: #9aa0ab;
-    --gray-600: #5a6170;
-    --gray-800: #1e2330;
-    --white: #ffffff;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --shadow: 0 2px 12px rgba(0,0,0,0.08);
-  }
+  :root { --blue: #1a6fb5; --blue-light: #e8f2fb; --blue-dark: #0d4a82; --green: #1a8a4a; --green-light: #e6f5ec; --amber: #b56a00; --amber-light: #fff3e0; --red: #c0392b; --red-light: #fdecea; --gray-50: #f8f9fa; --gray-100: #f0f1f3; --gray-200: #e2e4e8; --gray-400: #9aa0ab; --gray-600: #5a6170; --gray-800: #1e2330; --white: #ffffff; --radius: 12px; --radius-sm: 8px; --shadow: 0 2px 12px rgba(0,0,0,0.08); }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #eef2f7; color: var(--gray-800); min-height: 100vh; }
   .header { background: var(--blue-dark); color: white; padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
@@ -53,6 +33,7 @@
   .btn { width: 100%; padding: 13px; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .btn-primary { background: var(--blue); color: white; }
   .btn-wa { background: #25D366; color: white; margin-top: 10px; }
+  .btn:disabled { opacity: 0.5; cursor: wait; }
   .owner-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
   .chip { padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--gray-200); font-size: 13px; font-weight: 600; cursor: pointer; background: var(--white); color: var(--gray-600); }
   .chip.selected { background: var(--blue-light); border-color: var(--blue); color: var(--blue-dark); }
@@ -76,6 +57,9 @@
   .date-header { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray-400); padding: 0.5rem 0 0.25rem; }
   .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--gray-800); color: white; padding: 12px 20px; border-radius: 24px; font-size: 14px; font-weight: 600; z-index: 999; opacity: 0; transition: all 0.3s; pointer-events: none; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .loading { text-align: center; padding: 1rem; color: var(--gray-400); font-size: 13px; }
+  .sync-indicator { position: fixed; top: 70px; right: 12px; background: var(--blue); color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; z-index: 999; opacity: 0; transition: opacity 0.3s; }
+  .sync-indicator.show { opacity: 0.9; }
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
   .modal-overlay.open { display: flex; }
   .modal { background: var(--white); border-radius: var(--radius) var(--radius) 0 0; width: 100%; max-width: 560px; padding: 1.5rem; max-height: 85vh; overflow-y: auto; }
@@ -92,11 +76,13 @@
     <span class="header-logo">⛵</span>
     <div>
       <div class="header-title">Les Complices</div>
-      <div class="header-sub" id="header-sub">Réservation du bateau</div>
+      <div class="header-sub">Réservation du bateau</div>
     </div>
   </div>
-  <button class="lang-btn" onclick="toggleLang()" id="lang-toggle">EN</button>
+  <button class="lang-btn" onclick="loadAll()">🔄</button>
 </header>
+
+<div class="sync-indicator" id="sync">Synchronisation...</div>
 
 <nav class="nav">
   <button class="nav-btn active" onclick="showPage('book',this)">📅<br>Réserver</button>
@@ -136,7 +122,7 @@
   </div>
 
   <div class="card">
-    <button class="btn btn-primary" onclick="confirmBooking()">✓ Confirmer la réservation</button>
+    <button class="btn btn-primary" onclick="confirmBooking()" id="btn-confirm">✓ Confirmer la réservation</button>
     <div id="wa-wrap" style="display:none;">
       <button class="btn btn-wa" onclick="sendWhatsApp()">⛵ Notifier le groupe WhatsApp</button>
     </div>
@@ -146,14 +132,14 @@
 <div class="page" id="page-schedule">
   <div class="card">
     <div class="card-title">Prochaines réservations</div>
-    <div id="schedule-list"></div>
+    <div id="schedule-list"><div class="loading">Chargement...</div></div>
   </div>
 </div>
 
 <div class="page" id="page-history">
   <div class="card">
     <div class="card-title">Historique des sorties</div>
-    <div id="history-list"></div>
+    <div id="history-list"><div class="loading">Chargement...</div></div>
   </div>
 </div>
 
@@ -199,32 +185,218 @@
 <div class="toast" id="toast"></div>
 
 <script>
-var lang='fr',selectedSlots=[],currentDate='',lastBooking=null;
+var API='https://script.google.com/macros/s/AKfycbym0FYXBNv3aInUkzvAX0jUnNBOiDBWvcLPyJ7YzFh01qhLZbviO37PbLjHviXFVbrnZA/exec';
 var WA='https://chat.whatsapp.com/Ea1MZX5h8X4D22XUnD8jpu';
-var KB='lescomplices_bookings',KG='lescomplices_gas';
-function getB(){try{return JSON.parse(localStorage.getItem(KB))||[];}catch(e){return[];}}
-function setB(a){localStorage.setItem(KB,JSON.stringify(a));}
+var KG='lescomplices_gas';
+var bookings=[],selectedSlots=[],currentDate='',lastBooking=null;
+
+function showSync(on){document.getElementById('sync').classList.toggle('show',on);}
 function getG(){try{return JSON.parse(localStorage.getItem(KG))||[];}catch(e){return[];}}
 function setG(a){localStorage.setItem(KG,JSON.stringify(a));}
-function toggleLang(){lang=lang==='fr'?'en':'fr';document.getElementById('lang-toggle').textContent=lang==='fr'?'EN':'FR';loadSlots();renderSchedule();renderHistory();renderGas();}
-function showPage(n,b){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));document.getElementById('page-'+n).classList.add('active');b.classList.add('active');if(n==='schedule')renderSchedule();if(n==='history')renderHistory();if(n==='gas')renderGas();}
-function pickOwner(name,el){document.querySelectorAll('#page-book .chip').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');document.getElementById('inp-name').value=name;}
-function pickGasOwner(name,el){document.querySelectorAll('#gas-modal .chip').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');document.getElementById('gas-who').value=name;}
-function initDate(){var d=new Date(),s=d.toISOString().split('T')[0];document.getElementById('inp-date').value=s;currentDate=s;loadSlots();}
-function loadSlots(){currentDate=document.getElementById('inp-date').value;selectedSlots=[];var taken=[];getB().filter(b=>b.date===currentDate).forEach(b=>b.slots.forEach(s=>taken.push(s)));var g=document.getElementById('time-grid');g.innerHTML='';for(var h=0;h<24;h++){var d=document.createElement('div');d.className='time-slot'+(taken.indexOf(h)>=0?' taken':'');d.textContent=('0'+h).slice(-2)+':00';if(taken.indexOf(h)<0){(function(hh,el){el.onclick=function(){toggleSlot(el,hh);};})(h,d);}g.appendChild(d);}updateSum();}
-function toggleSlot(el,h){if(el.classList.contains('taken'))return;var i=selectedSlots.indexOf(h);if(i>=0){el.classList.remove('selected');selectedSlots.splice(i,1);}else{el.classList.add('selected');selectedSlots.push(h);selectedSlots.sort((a,b)=>a-b);}updateSum();}
-function updateSum(){var e=document.getElementById('booking-summary');if(selectedSlots.length===0){e.style.display='none';return;}e.style.display='block';e.textContent=selectedSlots.length+' heure'+(selectedSlots.length>1?'s':'')+' sélectionnée'+(selectedSlots.length>1?'s':'');}
-function confirmBooking(){var name=document.getElementById('inp-name').value.trim();if(!name){toast('Entrez votre nom');return;}if(selectedSlots.length===0){toast('Choisissez au moins une heure');return;}if(!currentDate){toast('Choisissez une date');return;}var bookings=getB();var taken=bookings.filter(b=>b.date===currentDate).flatMap(b=>b.slots);if(selectedSlots.some(s=>taken.includes(s))){toast('Conflit détecté, rechargement');loadSlots();return;}lastBooking={name:name,date:currentDate,slots:selectedSlots.slice()};bookings.push({id:Date.now(),name:name,date:currentDate,slots:selectedSlots.slice(),ts:new Date().toISOString(),gasFilled:false});setB(bookings);document.getElementById('inp-name').value='';document.querySelectorAll('#page-book .chip').forEach(c=>c.classList.remove('selected'));selectedSlots=[];loadSlots();document.getElementById('wa-wrap').style.display='block';toast('✅ Réservation confirmée!');}
-function sendWhatsApp(){if(!lastBooking)return;var b=lastBooking,ss=b.slots.slice().sort((a,c)=>a-c);var start=('0'+ss[0]).slice(-2)+'h00',end=('0'+(ss[ss.length-1]+1)).slice(-2)+'h00';var d=new Date(b.date+'T12:00:00');var ds=d.toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'long'});var msg='⛵ Les Complices — Nouvelle réservation\n\n👤 '+b.name+' a réservé le bateau\n📅 '+ds+'\n⏰ '+start+' – '+end+' ('+b.slots.length+'h)\n\n⛽ Rappel : faire le plein après!\n\n'+WA;window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');document.getElementById('wa-wrap').style.display='none';}
+
+async function fetchBookings(){
+  showSync(true);
+  try{
+    var r=await fetch(API);
+    var data=await r.json();
+    bookings=data.map(b=>({...b,date:typeof b.date==='string'?b.date.split('T')[0]:new Date(b.date).toISOString().split('T')[0]}));
+  }catch(e){console.error(e);bookings=[];}
+  showSync(false);
+}
+
+async function postAction(payload){
+  showSync(true);
+  try{
+    await fetch(API,{method:'POST',body:JSON.stringify(payload),headers:{'Content-Type':'text/plain'}});
+  }catch(e){console.error(e);}
+  showSync(false);
+}
+
+async function loadAll(){
+  await fetchBookings();
+  loadSlots();
+  renderSchedule();
+  renderHistory();
+  renderGas();
+}
+
+function showPage(n,b){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-'+n).classList.add('active');
+  b.classList.add('active');
+  if(n==='schedule'||n==='history'||n==='gas')loadAll();
+}
+
+function pickOwner(name,el){
+  document.querySelectorAll('#page-book .chip').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('inp-name').value=name;
+}
+
+function pickGasOwner(name,el){
+  document.querySelectorAll('#gas-modal .chip').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('gas-who').value=name;
+}
+
+function initDate(){
+  var d=new Date(),s=d.toISOString().split('T')[0];
+  document.getElementById('inp-date').value=s;
+  currentDate=s;
+}
+
+function loadSlots(){
+  currentDate=document.getElementById('inp-date').value;
+  selectedSlots=[];
+  var taken=[];
+  bookings.filter(b=>b.date===currentDate).forEach(b=>{(b.slots||[]).forEach(s=>taken.push(s));});
+  var g=document.getElementById('time-grid');
+  g.innerHTML='';
+  for(var h=0;h<24;h++){
+    var d=document.createElement('div');
+    d.className='time-slot'+(taken.indexOf(h)>=0?' taken':'');
+    d.textContent=('0'+h).slice(-2)+':00';
+    if(taken.indexOf(h)<0){(function(hh,el){el.onclick=function(){toggleSlot(el,hh);};})(h,d);}
+    g.appendChild(d);
+  }
+  updateSum();
+}
+
+function toggleSlot(el,h){
+  if(el.classList.contains('taken'))return;
+  var i=selectedSlots.indexOf(h);
+  if(i>=0){el.classList.remove('selected');selectedSlots.splice(i,1);}
+  else{el.classList.add('selected');selectedSlots.push(h);selectedSlots.sort((a,b)=>a-b);}
+  updateSum();
+}
+
+function updateSum(){
+  var e=document.getElementById('booking-summary');
+  if(selectedSlots.length===0){e.style.display='none';return;}
+  e.style.display='block';
+  e.textContent=selectedSlots.length+' heure'+(selectedSlots.length>1?'s':'')+' sélectionnée'+(selectedSlots.length>1?'s':'');
+}
+
+async function confirmBooking(){
+  var name=document.getElementById('inp-name').value.trim();
+  if(!name){toast('Entrez votre nom');return;}
+  if(selectedSlots.length===0){toast('Choisissez au moins une heure');return;}
+  if(!currentDate){toast('Choisissez une date');return;}
+  var btn=document.getElementById('btn-confirm');
+  btn.disabled=true;btn.textContent='Réservation en cours...';
+  await fetchBookings();
+  var taken=bookings.filter(b=>b.date===currentDate).flatMap(b=>b.slots||[]);
+  if(selectedSlots.some(s=>taken.includes(s))){
+    toast('Conflit détecté!');loadSlots();
+    btn.disabled=false;btn.textContent='✓ Confirmer la réservation';return;
+  }
+  var booking={action:'add',id:Date.now(),name:name,date:currentDate,slots:selectedSlots.slice(),ts:new Date().toISOString(),gasFilled:false};
+  lastBooking={name:name,date:currentDate,slots:selectedSlots.slice()};
+  await postAction(booking);
+  await fetchBookings();
+  document.getElementById('inp-name').value='';
+  document.querySelectorAll('#page-book .chip').forEach(c=>c.classList.remove('selected'));
+  selectedSlots=[];
+  loadSlots();
+  document.getElementById('wa-wrap').style.display='block';
+  btn.disabled=false;btn.textContent='✓ Confirmer la réservation';
+  toast('✅ Réservation confirmée!');
+}
+
+function sendWhatsApp(){
+  if(!lastBooking)return;
+  var b=lastBooking,ss=b.slots.slice().sort((a,c)=>a-c);
+  var start=('0'+ss[0]).slice(-2)+'h00',end=('0'+(ss[ss.length-1]+1)).slice(-2)+'h00';
+  var d=new Date(b.date+'T12:00:00');
+  var ds=d.toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'long'});
+  var msg='⛵ Les Complices — Nouvelle réservation\n\n👤 '+b.name+' a réservé le bateau\n📅 '+ds+'\n⏰ '+start+' – '+end+' ('+b.slots.length+'h)\n\n⛽ Rappel : faire le plein après!\n\n'+WA;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+  document.getElementById('wa-wrap').style.display='none';
+}
+
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
-function renderSchedule(){var list=document.getElementById('schedule-list'),today=new Date().toISOString().split('T')[0];var up=getB().filter(b=>b.date>=today).sort((a,b)=>a.date.localeCompare(b.date));if(up.length===0){list.innerHTML='<div class="empty-state"><p>Aucune réservation à venir.</p></div>';return;}var html='',ld='';up.forEach(b=>{if(b.date!==ld){var d=new Date(b.date+'T12:00:00');var ds=b.date===today?"Aujourd'hui":d.toLocaleDateString('fr-CA',{weekday:'short',month:'short',day:'numeric'});html+='<div class="date-header">'+ds+'</div>';ld=b.date;}var ss=b.slots.slice().sort((a,c)=>a-c);var s=('0'+ss[0]).slice(-2)+':00',e=('0'+(ss[ss.length-1]+1)).slice(-2)+':00';html+='<div class="booking-item"><div class="booking-avatar">'+ini(b.name)+'</div><div class="booking-info"><div class="booking-name">'+b.name+'</div><div class="booking-meta">'+s+' – '+e+' · '+b.slots.length+'h</div></div></div>';});list.innerHTML=html;}
-function renderHistory(){var list=document.getElementById('history-list'),today=new Date().toISOString().split('T')[0];var past=getB().filter(b=>b.date<today).sort((a,b)=>b.date.localeCompare(a.date));if(past.length===0){list.innerHTML='<div class="empty-state"><p>Aucune sortie passée.</p></div>';return;}list.innerHTML=past.map(b=>{var d=new Date(b.date+'T12:00:00');var ds=d.toLocaleDateString('fr-CA',{day:'numeric',month:'short',year:'numeric'});var ss=b.slots.slice().sort((a,c)=>a-c);var s=('0'+ss[0]).slice(-2)+':00',e=('0'+(ss[ss.length-1]+1)).slice(-2)+':00';var badge=b.gasFilled?'<span class="badge badge-green">✓ Plein fait</span>':'<span class="badge badge-red">✕ Pas fait</span>';return '<div class="booking-item"><div class="booking-avatar">'+ini(b.name)+'</div><div class="booking-info"><div class="booking-name">'+b.name+'</div><div class="booking-meta">'+ds+' · '+s+'–'+e+' · '+b.slots.length+'h</div></div>'+badge+'</div>';}).join('');}
-function renderGas(){var log=getG(),last=log.length>0?log[log.length-1]:null,level=last?parseInt(last.level):null;document.getElementById('gas-percent').textContent=level!==null?level+'%':'Inconnu';document.getElementById('tank-bar').style.width=(level||0)+'%';var notF=getB().filter(b=>b.date<new Date().toISOString().split('T')[0]&&!b.gasFilled);document.getElementById('gas-stats').innerHTML='<div class="stat-row"><span class="stat-label">Dernier plein par</span><span class="stat-value">'+(last?last.who:'—')+'</span></div><div class="stat-row"><span class="stat-label">Litres (dernier)</span><span class="stat-value">'+(last?last.litres+' L':'—')+'</span></div><div class="stat-row"><span class="stat-label">Sorties sans plein</span><span class="stat-value" style="color:'+(notF.length>0?'var(--red)':'var(--green)')+'">'+(notF.length>0?notF.length+' ('+notF.map(b=>b.name).join(', ')+')':'0 ✓')+'</span></div>';}
+
+function renderSchedule(){
+  var list=document.getElementById('schedule-list'),today=new Date().toISOString().split('T')[0];
+  var up=bookings.filter(b=>b.date>=today).sort((a,b)=>a.date.localeCompare(b.date)||Math.min(...(a.slots||[0]))-Math.min(...(b.slots||[0])));
+  if(up.length===0){list.innerHTML='<div class="empty-state"><p>Aucune réservation à venir.</p></div>';return;}
+  var html='',ld='';
+  up.forEach(b=>{
+    if(b.date!==ld){
+      var d=new Date(b.date+'T12:00:00');
+      var ds=b.date===today?"Aujourd'hui":d.toLocaleDateString('fr-CA',{weekday:'short',month:'short',day:'numeric'});
+      html+='<div class="date-header">'+ds+'</div>';
+      ld=b.date;
+    }
+    var ss=(b.slots||[]).slice().sort((a,c)=>a-c);
+    var s=('0'+ss[0]).slice(-2)+':00',e=('0'+(ss[ss.length-1]+1)).slice(-2)+':00';
+    html+='<div class="booking-item"><div class="booking-avatar">'+ini(b.name)+'</div><div class="booking-info"><div class="booking-name">'+b.name+'</div><div class="booking-meta">'+s+' – '+e+' · '+ss.length+'h</div></div></div>';
+  });
+  list.innerHTML=html;
+}
+
+function renderHistory(){
+  var list=document.getElementById('history-list'),today=new Date().toISOString().split('T')[0];
+  var past=bookings.filter(b=>b.date<today).sort((a,b)=>b.date.localeCompare(a.date));
+  if(past.length===0){list.innerHTML='<div class="empty-state"><p>Aucune sortie passée.</p></div>';return;}
+  list.innerHTML=past.map(b=>{
+    var d=new Date(b.date+'T12:00:00');
+    var ds=d.toLocaleDateString('fr-CA',{day:'numeric',month:'short',year:'numeric'});
+    var ss=(b.slots||[]).slice().sort((a,c)=>a-c);
+    var s=('0'+ss[0]).slice(-2)+':00',e=('0'+(ss[ss.length-1]+1)).slice(-2)+':00';
+    var badge=b.gasFilled?'<span class="badge badge-green">✓ Plein fait</span>':'<span class="badge badge-red">✕ Pas fait</span>';
+    return '<div class="booking-item"><div class="booking-avatar">'+ini(b.name)+'</div><div class="booking-info"><div class="booking-name">'+b.name+'</div><div class="booking-meta">'+ds+' · '+s+'–'+e+' · '+ss.length+'h</div></div>'+badge+'</div>';
+  }).join('');
+}
+
+function renderGas(){
+  var log=getG(),last=log.length>0?log[log.length-1]:null,level=last?parseInt(last.level):null;
+  document.getElementById('gas-percent').textContent=level!==null?level+'%':'Inconnu';
+  document.getElementById('tank-bar').style.width=(level||0)+'%';
+  var today=new Date().toISOString().split('T')[0];
+  var notF=bookings.filter(b=>b.date<today&&!b.gasFilled);
+  document.getElementById('gas-stats').innerHTML=
+    '<div class="stat-row"><span class="stat-label">Dernier plein par</span><span class="stat-value">'+(last?last.who:'—')+'</span></div>'+
+    '<div class="stat-row"><span class="stat-label">Litres (dernier)</span><span class="stat-value">'+(last?last.litres+' L':'—')+'</span></div>'+
+    '<div class="stat-row"><span class="stat-label">Sorties sans plein</span><span class="stat-value" style="color:'+(notF.length>0?'var(--red)':'var(--green)')+'">'+(notF.length>0?notF.length+' ('+notF.map(b=>b.name).join(', ')+')':'0 ✓')+'</span></div>';
+}
+
 function openGasModal(){document.getElementById('gas-modal').classList.add('open');}
 function closeGasModal(e){if(!e||e.target===document.getElementById('gas-modal'))document.getElementById('gas-modal').classList.remove('open');}
-function saveGas(){var who=document.getElementById('gas-who').value.trim(),lit=document.getElementById('gas-litres').value.trim(),lev=document.getElementById('gas-level').value.trim();if(!who||!lit||!lev){toast('Remplissez tous les champs');return;}var log=getG();log.push({who:who,litres:lit,level:lev,ts:new Date().toISOString()});setG(log);var bk=getB(),today=new Date().toISOString().split('T')[0],mine=bk.filter(b=>b.name===who&&b.date<=today);if(mine.length>0){mine.sort((a,b)=>b.date.localeCompare(a.date))[0].gasFilled=true;setB(bk);}document.getElementById('gas-who').value='';document.getElementById('gas-litres').value='';document.getElementById('gas-level').value='';document.querySelectorAll('#gas-modal .chip').forEach(c=>c.classList.remove('selected'));closeGasModal();renderGas();toast('⛽ Plein enregistré!');}
-function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+
+async function saveGas(){
+  var who=document.getElementById('gas-who').value.trim();
+  var lit=document.getElementById('gas-litres').value.trim();
+  var lev=document.getElementById('gas-level').value.trim();
+  if(!who||!lit||!lev){toast('Remplissez tous les champs');return;}
+  var log=getG();
+  log.push({who:who,litres:lit,level:lev,ts:new Date().toISOString()});
+  setG(log);
+  var today=new Date().toISOString().split('T')[0];
+  var mine=bookings.filter(b=>b.name===who&&b.date<=today).sort((a,b)=>b.date.localeCompare(a.date));
+  if(mine.length>0){
+    await postAction({action:'updateGas',id:mine[0].id});
+    await fetchBookings();
+  }
+  document.getElementById('gas-who').value='';
+  document.getElementById('gas-litres').value='';
+  document.getElementById('gas-level').value='';
+  document.querySelectorAll('#gas-modal .chip').forEach(c=>c.classList.remove('selected'));
+  closeGasModal();
+  renderGas();
+  toast('⛽ Plein enregistré!');
+}
+
+function toast(m){
+  var t=document.getElementById('toast');
+  t.textContent=m;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
 initDate();
+loadAll();
+setInterval(loadAll,30000);
 </script>
 </body>
 </html>
