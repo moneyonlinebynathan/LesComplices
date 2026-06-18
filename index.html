@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Les Complices — Réservation du bateau</title>
+<style>
+  :root {
+    --blue: #1a6fb5;
+    --blue-light: #e8f2fb;
+    --blue-dark: #0d4a82;
+    --green: #1a8a4a;
+    --green-light: #e6f5ec;
+    --amber: #b56a00;
+    --amber-light: #fff3e0;
+    --red: #c0392b;
+    --red-light: #fdecea;
+    --gray-50: #f8f9fa;
+    --gray-100: #f0f1f3;
+    --gray-200: #e2e4e8;
+    --gray-400: #9aa0ab;
+    --gray-600: #5a6170;
+    --gray-800: #1e2330;
+    --white: #ffffff;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #eef2f7; color: var(--gray-800); min-height: 100vh; }
+  .header { background: var(--blue-dark); color: white; padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .header-logo { font-size: 22px; }
+  .header-title { font-size: 17px; font-weight: 700; }
+  .header-sub { font-size: 11px; opacity: 0.7; margin-top: 1px; }
+  .lang-btn { background: rgba(255,255,255,0.15); border: none; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600; }
+  .nav { display: flex; background: var(--white); border-bottom: 1px solid var(--gray-200); position: sticky; top: 57px; z-index: 99; }
+  .nav-btn { flex: 1; padding: 12px 4px 10px; border: none; background: none; color: var(--gray-600); font-size: 11px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; border-bottom: 3px solid transparent; }
+  .nav-btn.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+  .page { display: none; padding: 1rem; max-width: 560px; margin: 0 auto; }
+  .page.active { display: block; }
+  .card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 14px; font-weight: 700; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1rem; }
+  .field { margin-bottom: 1rem; }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; }
+  input[type=text], input[type=date] { width: 100%; padding: 10px 12px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 15px; color: var(--gray-800); background: var(--white); -webkit-appearance: none; appearance: none; }
+  input:focus { outline: none; border-color: var(--blue); }
+  .time-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+  .time-slot { padding: 9px 4px; text-align: center; font-size: 12px; font-weight: 600; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); cursor: pointer; background: var(--white); color: var(--gray-600); user-select: none; }
+  .time-slot.selected { background: var(--blue-light); border-color: var(--blue); color: var(--blue-dark); font-weight: 700; }
+  .time-slot.taken { background: var(--gray-100); color: var(--gray-400); cursor: not-allowed; }
+  .booking-summary { background: var(--blue-light); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--blue-dark); margin: 0.75rem 0; display: none; font-weight: 500; }
+  .btn { width: 100%; padding: 13px; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-primary { background: var(--blue); color: white; }
+  .btn-wa { background: #25D366; color: white; margin-top: 10px; }
+  .owner-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .chip { padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--gray-200); font-size: 13px; font-weight: 600; cursor: pointer; background: var(--white); color: var(--gray-600); }
+  .chip.selected { background: var(--blue-light); border-color: var(--blue); color: var(--blue-dark); }
+  .booking-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gray-100); }
+  .booking-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; background: #dbeafe; color: #1d4ed8; }
+  .booking-info { flex: 1; }
+  .booking-name { font-size: 14px; font-weight: 700; }
+  .booking-meta { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+  .empty-state { text-align: center; padding: 2rem 1rem; color: var(--gray-400); }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
+  .badge-green { background: var(--green-light); color: var(--green); }
+  .badge-red { background: var(--red-light); color: var(--red); }
+  .tank-display { text-align: center; padding: 1rem 0; }
+  .tank-level { font-size: 48px; font-weight: 800; color: var(--blue-dark); line-height: 1; }
+  .tank-label { font-size: 13px; color: var(--gray-400); margin-top: 4px; }
+  .tank-bar-wrap { background: var(--gray-100); border-radius: 8px; height: 16px; margin: 1rem 0; overflow: hidden; }
+  .tank-bar-fill { height: 100%; border-radius: 8px; background: #1a8a4a; transition: width 0.5s ease; }
+  .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--gray-100); font-size: 14px; }
+  .stat-label { color: var(--gray-600); }
+  .stat-value { font-weight: 700; }
+  .date-header { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gray-400); padding: 0.5rem 0 0.25rem; }
+  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--gray-800); color: white; padding: 12px 20px; border-radius: 24px; font-size: 14px; font-weight: 600; z-index: 999; opacity: 0; transition: all 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--white); border-radius: var(--radius) var(--radius) 0 0; width: 100%; max-width: 560px; padding: 1.5rem; max-height: 85vh; overflow-y: auto; }
+  .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 1rem; }
+  .modal-close { float: right; background: var(--gray-100); border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (min-width: 480px) { .time-grid { grid-template-columns: repeat(6, 1fr); } }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <span class="header-logo">⛵</span>
+    <div>
+      <div class="header-title">Les Complices</div>
+      <div class="header-sub" id="header-sub">Réservation du bateau</div>
+    </div>
+  </div>
+  <button class="lang-btn" onclick="toggleLang()" id="lang-toggle">EN</button>
+</header>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="showPage('book',this)">📅<br>Réserver</button>
+  <button class="nav-btn" onclick="showPage('schedule',this)">🕐<br>Horaire</button>
+  <button class="nav-btn" onclick="showPage('history',this)">📁<br>Historique</button>
+  <button class="nav-btn" onclick="showPage('gas',this)">⛽<br>Essence</button>
+</nav>
+
+<div class="page active" id="page-book">
+  <div class="card">
+    <div class="card-title">Qui prend le bateau?</div>
+    <div class="field">
+      <label>Sélection rapide</label>
+      <div class="owner-chips">
+        <div class="chip" onclick="pickOwner('François',this)">François</div>
+        <div class="chip" onclick="pickOwner('Luc',this)">Luc</div>
+        <div class="chip" onclick="pickOwner('Stéphane',this)">Stéphane</div>
+        <div class="chip" onclick="pickOwner('Sébastien',this)">Sébastien</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Ou entrez votre nom</label>
+      <input type="text" id="inp-name" placeholder="Prénom Nom">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Date</div>
+    <input type="date" id="inp-date" onchange="loadSlots()">
+  </div>
+
+  <div class="card">
+    <div class="card-title">Heures</div>
+    <div style="font-size:12px;color:var(--gray-400);margin-bottom:8px;">Appuyez sur les heures (plusieurs OK)</div>
+    <div class="time-grid" id="time-grid"></div>
+    <div class="booking-summary" id="booking-summary"></div>
+  </div>
+
+  <div class="card">
+    <button class="btn btn-primary" onclick="confirmBooking()">✓ Confirmer la réservation</button>
+    <div id="wa-wrap" style="display:none;">
+      <button class="btn btn-wa" onclick="sendWhatsApp()">⛵ Notifier le groupe WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-schedule">
+  <div class="card">
+    <div class="card-title">Prochaines réservations</div>
+    <div id="schedule-list"></div>
+  </div>
+</div>
+
+<div class="page" id="page-history">
+  <div class="card">
+    <div class="card-title">Historique des sorties</div>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<div class="page" id="page-gas">
+  <div class="card">
+    <div class="tank-display">
+      <div class="tank-level" id="gas-percent">--</div>
+      <div class="tank-label">Niveau estimé du réservoir</div>
+    </div>
+    <div class="tank-bar-wrap"><div class="tank-bar-fill" id="tank-bar" style="width:0%"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Résumé essence</div>
+    <div id="gas-stats"></div>
+  </div>
+  <div class="card">
+    <button class="btn btn-primary" onclick="openGasModal()">+ Enregistrer un plein</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="gas-modal" onclick="closeGasModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeGasModal()">✕</button>
+    <div class="modal-title">Enregistrer un plein</div>
+    <div class="field">
+      <label>Qui a fait le plein?</label>
+      <div class="owner-chips" style="margin-bottom:8px;">
+        <div class="chip" onclick="pickGasOwner('François',this)">François</div>
+        <div class="chip" onclick="pickGasOwner('Luc',this)">Luc</div>
+        <div class="chip" onclick="pickGasOwner('Stéphane',this)">Stéphane</div>
+        <div class="chip" onclick="pickGasOwner('Sébastien',this)">Sébastien</div>
+      </div>
+      <input type="text" id="gas-who" placeholder="Nom">
+    </div>
+    <div class="row2">
+      <div class="field"><label>Litres ajoutés</label><input type="text" id="gas-litres" placeholder="25"></div>
+      <div class="field"><label>Niveau après (%)</label><input type="text" id="gas-level" placeholder="90"></div>
+    </div>
+    <button class="btn btn-primary" onclick="saveGas()">Enregistrer</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var lang='fr',selectedSlots=[],currentDate='',lastBooking=null;
+var WA='https://chat.whatsapp.com/Ea1MZX5h8X4D22XUnD8jpu';
+var KB='lescomplices_bookings',KG='lescomplices_gas';
+function getB(){try{return JSON.parse(localStorage.getItem(KB))||[];}catch(e){return[];}}
+function setB(a){localStorage.setItem(KB,JSON.stringify(a));}
+function getG(){try{return JSON.parse(localStorage.getItem(KG))||[];}catch(e){return[];}}
+function setG(a){localStorage.setItem(KG,JSON.stringify(a));}
+function toggleLang(){lang=lang==='fr'?'en':'fr';document.getElementById('lang-toggle').textContent=lang==='fr'?'EN':'FR';loadSlots();renderSchedule();renderHistory();renderGas();}
+function showPage(n,b){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));document.getElementById('page-'+n).classList.add('active');b.classList.add('active');if(n==='schedule')renderSchedule();if(n==='history')renderHistory();if(n==='gas')renderGas();}
+function pickOwner(name,el){document.querySelectorAll('#page-book .chip').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');document.getElementById('inp-name').value=name;}
+function pickGasOwner(name,el){document.querySelectorAll('#gas-modal .chip').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');document.getElementById('gas-who').value=name;}
+function initDate(){var d=new Date(),s=d.toISOString().split('T')[0];document.getElementById('inp-date').value=s;currentDate=s;loadSlots();}
+function loadSlots(){currentDate=document.getElementById('inp-date').value;selectedSlots=[];var taken=[];getB().filter(b=>b.date===currentDate).forEach(b=>b.slots.forEach(s=>taken.push(s)));var g=document.getElementById('time-grid');g.innerHTML='';for(var h=0;h<24;h++){var d=document.createElement('div');d.className='time-slot'+(taken.indexOf(h)>=0?' taken':'');d.textContent=('0'+h).slice(-2)+':00';if(taken.indexOf(h)<0){(function(hh,el){el.onclick=function(){toggleSlot(el,hh);};})(h,d);}g.appendChild(d);}updateSum();}
+function toggleSlot(el,h){if(el.classList.contains('taken'))return;var i=selectedSlots.indexOf(h);if(i>=0){el.classList.remove('selected');selectedSlots.splice(i,1);}else{el.classList.add('selected');selectedSlots.push(h);selectedSlots.sort((a,b)=>a-b);}updateSum();}
+function updateSum(){var e=document.getElementById('booking-summary');if(selectedSlots.length===0){e.style.display='none';return;}e.style.display='block';e.textContent=selectedSlots.length+' heure'+(selectedSlots.length>1?'s':'')+' sélectionnée'+(selectedSlots.length>1?'s':'');}
+function confirmBooking(){var name=document.getElementById('inp-name').value.trim();if(!name){toast('Entrez votre nom');return;}if(selectedSlots.length===0){toast('Choisissez au moins une heure');return;}if(!currentDate){toast('Choisissez une date');return;}var bookings=getB();var taken=bookings.filter(b=>b.date===currentDate).flatMap(b=>b.slots);if(selectedSlots.some(s=>taken.includes(s))){toast('Conflit détecté, rechargement');loadSlots();return;}lastBooking={name:name,date:currentDate,slots:selectedSlots.slice()};bookings.push({id:Date.now(),name:name,date:currentDate,slots:selectedSlots.slice(),ts:new Date().toISOString(),gasFilled:false});setB(bookings);document.getElementById('inp-name').value='';document.querySelectorAll('#page-book .chip').forEach(c=>c.classList.remove('selected'));selectedSlots=[];loadSlots();document.getElementById('wa-wrap').style.display='block';toast('✅ Réservation confirmée!');}
+function sendWhatsApp(){if(!lastBooking)return;var b=lastBooking,ss=b.slots.slice().sort((a,c)=>a-c);var start=('0'+ss[0]).slice(-2)+'h00',end=('0'+(ss[ss.length-1]+1)).slice(-2)+'h00';var d=new Date(b.date+'T12:00:00');var ds=d.toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'long'});var msg='⛵ Les Complices — Nouvelle réservation\n\n👤 '+b.name+' a réservé le bateau\n📅 '+ds+'\n⏰ '+start+' – '+end+' ('+b.slots.length+'h)\n\n⛽ Rappel : faire le plein après!\n\n'+WA;window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');document.getElementById('wa-wrap').style.display='none';}
+function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
+function renderSchedule(){var list=document.getElementById('schedule-list'),today=new Date().toISOString().split('T')[0];var up=getB().filter(b=>b.date>=today).sort((a,b)=>a.date.localeCompare(b.date));if(up.length===0){list.innerHTML='<div class="empty-state"><p>Aucune réservation à venir.</p></div>';return;}var html='',ld='';up.forEach(b=>{if(b.date!==ld){var d=new Date(b.date+'T12:00:00');var ds=b.date===today?"Aujourd'hui":d.toLocaleDateString('fr-CA',{weekday:'short',month:'short',day:'numeric'});html+='<div class="date-header">'+ds+'</div>';ld=b.date;}var ss=b.slots.slice().sort((a,c)=>a-c);var s=('0'+ss[0]).slice(-2)+':00',e=('0'+(ss[ss.length-1]+1)).slice(-2)+':00';html+='<div class="booking-item"><div class="booking-avatar">'+ini(b.name)+'</div><div class="booking-info"><div class="booking-name">'+b.name+'</div><div class="booking-meta">'+s+' – '+e+' · '+b.slots.length+'h</div></div></div>';});list.innerHTML=html;}
+function renderHistory(){var list=document.getElementById('history-list'),today=new Date().toISOString().split('T')[0];var past=getB().filter(b=>b.date<today).sort((a,b)=>b.date.localeCompare(a.date));if(past.length===0){list.innerHTML='<div class="empty-state"><p>Aucune sortie passée.</p></div>';return;}list.innerHTML=past.map(b=>{var d=new Date(b.date+'T12:00:00');var ds=d.toLocaleDateString('fr-CA',{day:'numeric',month:'short',year:'numeric'});var ss=b.slots.slice().sort((a,c)=>a-c);var s=('0'+ss[0]).slice(-2)+':00',e=('0'+(ss[ss.length-1]+1)).slice(-2)+':00';var badge=b.gasFilled?'<span class="badge badge-green">✓ Plein fait</span>':'<span class="badge badge-red">✕ Pas fait</span>';return '<div class="booking-item"><div class="booking-avatar">'+ini(b.name)+'</div><div class="booking-info"><div class="booking-name">'+b.name+'</div><div class="booking-meta">'+ds+' · '+s+'–'+e+' · '+b.slots.length+'h</div></div>'+badge+'</div>';}).join('');}
+function renderGas(){var log=getG(),last=log.length>0?log[log.length-1]:null,level=last?parseInt(last.level):null;document.getElementById('gas-percent').textContent=level!==null?level+'%':'Inconnu';document.getElementById('tank-bar').style.width=(level||0)+'%';var notF=getB().filter(b=>b.date<new Date().toISOString().split('T')[0]&&!b.gasFilled);document.getElementById('gas-stats').innerHTML='<div class="stat-row"><span class="stat-label">Dernier plein par</span><span class="stat-value">'+(last?last.who:'—')+'</span></div><div class="stat-row"><span class="stat-label">Litres (dernier)</span><span class="stat-value">'+(last?last.litres+' L':'—')+'</span></div><div class="stat-row"><span class="stat-label">Sorties sans plein</span><span class="stat-value" style="color:'+(notF.length>0?'var(--red)':'var(--green)')+'">'+(notF.length>0?notF.length+' ('+notF.map(b=>b.name).join(', ')+')':'0 ✓')+'</span></div>';}
+function openGasModal(){document.getElementById('gas-modal').classList.add('open');}
+function closeGasModal(e){if(!e||e.target===document.getElementById('gas-modal'))document.getElementById('gas-modal').classList.remove('open');}
+function saveGas(){var who=document.getElementById('gas-who').value.trim(),lit=document.getElementById('gas-litres').value.trim(),lev=document.getElementById('gas-level').value.trim();if(!who||!lit||!lev){toast('Remplissez tous les champs');return;}var log=getG();log.push({who:who,litres:lit,level:lev,ts:new Date().toISOString()});setG(log);var bk=getB(),today=new Date().toISOString().split('T')[0],mine=bk.filter(b=>b.name===who&&b.date<=today);if(mine.length>0){mine.sort((a,b)=>b.date.localeCompare(a.date))[0].gasFilled=true;setB(bk);}document.getElementById('gas-who').value='';document.getElementById('gas-litres').value='';document.getElementById('gas-level').value='';document.querySelectorAll('#gas-modal .chip').forEach(c=>c.classList.remove('selected'));closeGasModal();renderGas();toast('⛽ Plein enregistré!');}
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+initDate();
+</script>
+</body>
+</html>
