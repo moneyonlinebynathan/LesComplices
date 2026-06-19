@@ -34,6 +34,7 @@
   .btn-primary { background: var(--blue); color: white; }
   .btn-wa { background: #25D366; color: white; margin-top: 10px; }
   .btn-danger { background: var(--red); color: white; }
+  .btn-secondary { background: var(--gray-100); color: var(--gray-800); margin-top: 8px; }
   .btn:disabled { opacity: 0.5; cursor: wait; }
   .owner-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
   .chip { padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--gray-200); font-size: 13px; font-weight: 600; cursor: pointer; background: var(--white); color: var(--gray-600); }
@@ -63,12 +64,13 @@
   .loading { text-align: center; padding: 1rem; color: var(--gray-400); font-size: 13px; }
   .sync-indicator { position: fixed; top: 70px; right: 12px; background: var(--blue); color: white; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; z-index: 999; opacity: 0; transition: opacity 0.3s; }
   .sync-indicator.show { opacity: 0.9; }
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: center; justify-content: center; padding: 1rem; }
   .modal-overlay.open { display: flex; }
-  .modal { background: var(--white); border-radius: var(--radius) var(--radius) 0 0; width: 100%; max-width: 560px; padding: 1.5rem; max-height: 85vh; overflow-y: auto; }
-  .modal.center { border-radius: var(--radius); margin: auto; }
-  .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 1rem; }
+  .modal { background: var(--white); border-radius: var(--radius); width: 100%; max-width: 420px; padding: 1.5rem; }
+  .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 0.75rem; text-align: center; }
+  .modal-info { background: var(--gray-50); padding: 14px; border-radius: 8px; font-size: 14px; margin-bottom: 1rem; text-align: center; line-height: 1.5; }
   .modal-close { float: right; background: var(--gray-100); border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; }
+  .modal-bottom { border-radius: var(--radius) var(--radius) 0 0; max-width: 560px; max-height: 85vh; overflow-y: auto; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   @media (min-width: 480px) { .time-grid { grid-template-columns: repeat(6, 1fr); } }
 </style>
@@ -165,7 +167,7 @@
 </div>
 
 <div class="modal-overlay" id="gas-modal" onclick="closeGasModal(event)">
-  <div class="modal">
+  <div class="modal modal-bottom">
     <button class="modal-close" onclick="closeGasModal()">✕</button>
     <div class="modal-title">Enregistrer un plein</div>
     <div class="field">
@@ -188,15 +190,19 @@
 
 <div class="modal-overlay" id="cancel-modal" onclick="closeCancelModal(event)">
   <div class="modal">
-    <button class="modal-close" onclick="closeCancelModal()">✕</button>
-    <div class="modal-title">Annuler la réservation</div>
-    <p style="font-size:14px;color:var(--gray-600);margin-bottom:1rem;">Pour annuler, confirmez votre nom (la personne qui a fait la réservation):</p>
-    <div id="cancel-info" style="background:var(--gray-100);padding:10px;border-radius:8px;font-size:13px;margin-bottom:1rem;"></div>
-    <div class="field">
-      <label>Tapez votre nom exactement</label>
-      <input type="text" id="cancel-name" placeholder="Prénom Nom">
-    </div>
-    <button class="btn btn-danger" onclick="confirmCancel()">Confirmer l'annulation</button>
+    <div class="modal-title">Annuler la réservation?</div>
+    <div class="modal-info" id="cancel-info"></div>
+    <button class="btn btn-danger" onclick="confirmCancel()">Confirmer</button>
+    <button class="btn btn-secondary" onclick="closeCancelModal()">Garder la réservation</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="cancel-wa-modal">
+  <div class="modal">
+    <div class="modal-title">✓ Réservation annulée</div>
+    <div class="modal-info">Voulez-vous notifier le groupe WhatsApp?</div>
+    <button class="btn btn-wa" onclick="sendCancelWhatsApp()">⛵ Notifier le groupe</button>
+    <button class="btn btn-secondary" onclick="closeCancelWaModal()">Non merci</button>
   </div>
 </div>
 
@@ -206,7 +212,7 @@
 var API='https://script.google.com/macros/s/AKfycbybsM3d4OXgfjV6HdjtCPlW3pOPOZkVUjJsrNewuC1xImkID7Ha7D61GkNSjuijcJYNhg/exec';
 var WA='https://chat.whatsapp.com/Ea1MZX5h8X4D22XUnD8jpu';
 var KG='lescomplices_gas';
-var bookings=[],selectedSlots=[],currentDate='',lastBooking=null,bookingToCancel=null;
+var bookings=[],selectedSlots=[],currentDate='',lastBooking=null,bookingToCancel=null,lastCancelled=null;
 
 function showSync(on){document.getElementById('sync').classList.toggle('show',on);}
 function getG(){try{return JSON.parse(localStorage.getItem(KG))||[];}catch(e){return[];}}
@@ -336,13 +342,12 @@ function sendWhatsApp(){
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
 
 function openCancelModal(id,name,date,slots){
-  bookingToCancel={id:id,name:name};
+  bookingToCancel={id:id,name:name,date:date,slots:slots};
   var d=new Date(date+'T12:00:00');
   var ds=d.toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'long'});
   var ss=slots.slice().sort((a,c)=>a-c);
   var s=('0'+ss[0]).slice(-2)+'h00',e=('0'+(ss[ss.length-1]+1)).slice(-2)+'h00';
   document.getElementById('cancel-info').innerHTML='<strong>'+name+'</strong><br>'+ds+'<br>'+s+' – '+e;
-  document.getElementById('cancel-name').value='';
   document.getElementById('cancel-modal').classList.add('open');
 }
 
@@ -355,17 +360,31 @@ function closeCancelModal(e){
 
 async function confirmCancel(){
   if(!bookingToCancel)return;
-  var typedName=document.getElementById('cancel-name').value.trim();
-  if(typedName.toLowerCase()!==bookingToCancel.name.toLowerCase()){
-    toast('❌ Le nom ne correspond pas');return;
-  }
+  lastCancelled={name:bookingToCancel.name,date:bookingToCancel.date,slots:bookingToCancel.slots.slice()};
   await postAction({action:'delete',id:bookingToCancel.id,name:bookingToCancel.name});
   await fetchBookings();
   loadSlots();
   renderSchedule();
   renderHistory();
-  closeCancelModal();
-  toast('✅ Réservation annulée');
+  document.getElementById('cancel-modal').classList.remove('open');
+  bookingToCancel=null;
+  document.getElementById('cancel-wa-modal').classList.add('open');
+}
+
+function closeCancelWaModal(){
+  document.getElementById('cancel-wa-modal').classList.remove('open');
+  lastCancelled=null;
+}
+
+function sendCancelWhatsApp(){
+  if(!lastCancelled){closeCancelWaModal();return;}
+  var b=lastCancelled,ss=b.slots.slice().sort((a,c)=>a-c);
+  var start=('0'+ss[0]).slice(-2)+'h00',end=('0'+(ss[ss.length-1]+1)).slice(-2)+'h00';
+  var d=new Date(b.date+'T12:00:00');
+  var ds=d.toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'long'});
+  var msg='⛵ Les Complices — Réservation annulée\n\n👤 '+b.name+' a annulé sa réservation\n📅 '+ds+'\n⏰ '+start+' – '+end+'\n\n✅ Les heures sont maintenant disponibles!\n\n'+WA;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+  closeCancelWaModal();
 }
 
 function renderSchedule(){
